@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+
+commands = [:set]
+if ARGV[0]
+	command = ARGV.shift.to_sym
+	params = ARGV
+	puts command
+end
+
+if command
+	puts "running #{command}"
+	case command
+	when :set then puts "setting development branch to #{params.first}"; `git config ams.development #{params.first}`
+	else
+		puts "unkown command"
+	end
+else
+	branch = `git config --get ams.development`
+	`git checkout #{branch}`
+	`git pull origin #{branch}`
+	puts "Now developing on #{branch}"
+end
