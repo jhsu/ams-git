@@ -1,19 +1,19 @@
 #!/usr/bin/env ruby
 
 HELP=<<-HELP
-git ams set $branch_name # set the name of the development branch
-git ams                  # checks out development branch and pulls any updates
+
+    git ams set $branch_name # set the name of the development branch
+    git ams                  # checks out development branch and pulls any updates
+
 HELP
 
 commands = [:set]
 if ARGV[0]
 	command = ARGV.shift.to_sym
 	params = ARGV
-	puts command
 end
 
 if command
-	puts "running #{command}"
 	case command
 	when :set then puts "setting development branch to #{params.first}"; `git config ams.development #{params.first}`
 	when :help then puts HELP
