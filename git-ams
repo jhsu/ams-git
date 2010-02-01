@@ -39,7 +39,7 @@ def switch_to(env)
 		end
 		true
 	else
-		puts "\e[0;31mYou have uncommited changes.\e[m Please stash, commit or 'git reset --hard' (dangerous) first"
+		puts "\e[0;31mYou have uncommited changes.\e[m Please stash, commit, or 'git reset --hard' (dangerous) first"
 	end
 end
 
@@ -54,6 +54,10 @@ end
 
 def branch_name(env)
   `git config --get workflow.#{env}`
+end
+
+def current_branch
+	`git branch | grep '*' | awk '{print $2}'`
 end
 
 def list()
@@ -107,9 +111,16 @@ def parse_args(args)
 				checkout(args.first, "-b")
 			end
 		when /update/
+			branch = current_branch
 			ENVS.each do |env|
-				switch_to env
+				pull if switch_to env
+			end
+			checkout branch
+		when /join/
+			branch = current_branch
+			if switch_to(:development)
 				pull
+				`git merge --no-ff #{branch}`
 			end
 		when /status/
 			if dirty?
