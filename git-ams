@@ -18,13 +18,20 @@ def parse_args(args)
 			development_branch
 		when /pro/
 			production_branch
+		when /feature/
+			if args.length > 1
+				development_branch
+				checkout(args[1], "-b")
+			else
+				puts `git branch`
+			end
 		end
 	end
 end
 
-def checkout(branch)
+def checkout(branch, opts="")
 	if branch && branch != ""
-		`git checkout #{branch}`
+		`git checkout#{" " + opts} #{branch}`
 	else
 		puts "Branch not set"
 	end
