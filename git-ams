@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'optparse'
+
 HELP=<<-HELP
 
     git ams set $branch_name # set the name of the development branch
@@ -7,22 +9,69 @@ HELP=<<-HELP
 
 HELP
 
-commands = [:set]
-if ARGV[0]
-	command = ARGV.shift.to_sym
-	params = ARGV
+ENVS = [:development, :production]
+
+def parse_args(args)
+	if args
+		case args.first
+		when /dev/
+			development_branch
+		when /pro/
+			production_branch
+		end
+	end
 end
 
-if command
-	case command
-	when :set then puts "setting development branch to #{params.first}"; `git config ams.development #{params.first}`
-	when :help then puts HELP
+def checkout(branch)
+	if branch && branch != ""
+		`git checkout #{branch}`
 	else
-		puts "unkown command"
+		puts "Branch not set"
 	end
-else
-	branch = `git config --get ams.development`
-	`git checkout #{branch}`
-	`git pull origin #{branch}`
-	puts "Now developing on #{branch}"
+end
+
+def pull(branch)
+	checkout branch
+	`git pull`
+end
+
+def development_branch
+  checkout `git config --get workflow.development`
+end
+
+def production_branch
+  checkout `git config --get workflow.production`
+end
+
+def branch_name(env)
+  `git config --get workflow.#{env}`
+end
+
+options = OptionParser.new do |opts|
+	opts.on("-h", "Get Help") do |opt|
+		puts HELP
+	end
+
+	ENVS.each do |env|
+		opts.on("--#{env} branch", "set branch for #{env} work") do |branch|
+			`git config workflow.#{env} #{branch}`
+			puts "set #{env} branch to #{branch}"
+		end
+	end
+
+	opts.on("-ls", "--list", "show working branches") do |list|
+		listing = []
+		ENVS.each do |env|
+			listing << "#{env} : " + `git config --get workflow.#{env}`
+		end
+		puts "\nEnvironments\n============"
+		puts listing
+		puts ""
+	end
+end 
+begin
+	options.parse!(ARGV)
+	parse_args(ARGV)
+rescue
+  puts HELP
 end
