@@ -1,32 +1,17 @@
 #!/usr/bin/env ruby
-
 require 'optparse'
 
 HELP=<<-HELP
 
-    git ams set $branch_name # set the name of the development branch
+    git ams --[environment] [branch_name] # set the name of the development branch
     git ams                  # checks out development branch and pulls any updates
 
 HELP
 
 ENVS = [:development, :production]
 
-def parse_args(args)
-	if args
-		case args.first
-		when /dev/
-			development_branch
-		when /pro/
-			production_branch
-		when /feature/
-			if args.length > 1
-				development_branch
-				checkout(args[1], "-b")
-			else
-				puts `git branch`
-			end
-		end
-	end
+def help()
+	puts HELP
 end
 
 def checkout(branch, opts="")
@@ -37,28 +22,43 @@ def checkout(branch, opts="")
 	end
 end
 
-def pull(branch)
-	checkout branch
+def pull
 	`git pull`
 end
 
-def development_branch
-  checkout `git config --get workflow.development`
-end
-
-def production_branch
-  checkout `git config --get workflow.production`
+def switch_to(env)
+	branch = branch_name env
+	if branch != ""
+		checkout branch
+	else
+		puts <<-INSTRUCT
+You need set your branch name for #{env} using:
+    git ams --[environment] [branch]
+INSTRUCT
+	end
 end
 
 def branch_name(env)
   `git config --get workflow.#{env}`
 end
 
+def list()
+	listing = []
+	ENVS.each do |env|
+		listing << "#{env} : #{branch_name(env)}"
+	end
+	puts "\nEnvironments\n============"
+	puts listing
+	puts ""
+end
+
 options = OptionParser.new do |opts|
+  # Help
 	opts.on("-h", "Get Help") do |opt|
-		puts HELP
+		help
 	end
 
+  # Switching environment
 	ENVS.each do |env|
 		opts.on("--#{env} branch", "set branch for #{env} work") do |branch|
 			`git config workflow.#{env} #{branch}`
@@ -66,16 +66,31 @@ options = OptionParser.new do |opts|
 		end
 	end
 
-	opts.on("-ls", "--list", "show working branches") do |list|
-		listing = []
-		ENVS.each do |env|
-			listing << "#{env} : " + `git config --get workflow.#{env}`
-		end
-		puts "\nEnvironments\n============"
-		puts listing
-		puts ""
+  # List environments
+	opts.on("-ls", "--list", "show working branches") do |listing|
+		list
 	end
 end 
+
+def parse_args(args)
+	if args
+		case args.first
+		when /dev/
+			switch_to(:development)
+		when /pro/
+			switch_to(:production)
+		when /feature/
+			if args.length > 1
+				switch_to(:development)
+				pull
+				checkout(args[1], "-b")
+			end
+		else
+			list
+		end
+	end
+end
+
 begin
 	options.parse!(ARGV)
 	parse_args(ARGV)
