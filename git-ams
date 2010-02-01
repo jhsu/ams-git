@@ -27,15 +27,29 @@ def pull
 end
 
 def switch_to(env)
-	branch = branch_name env
-	if branch != ""
-		checkout branch
+	if clean?
+		branch = branch_name env
+		if branch != ""
+			checkout branch
+		else
+			puts <<-INSTRUCT
+	You need set your branch name for #{env} using:
+			git ams --[environment] [branch]
+	INSTRUCT
+		end
+		true
 	else
-		puts <<-INSTRUCT
-You need set your branch name for #{env} using:
-    git ams --[environment] [branch]
-INSTRUCT
+		puts "\e[0;31mYou have uncommited changes.\e[m Please stash, commit or 'git reset --hard' (dangerous) first"
 	end
+end
+
+def dirty?
+	state = "#{`[[ $(git status 2> /dev/null | tail -n1) != 'nothing to commit (working directory clean)' ]] && echo 'dirty'`}"
+	state.match(/dirty/) ? true : false
+end
+
+def clean?
+	!dirty?
 end
 
 def branch_name(env)
@@ -74,16 +88,34 @@ end
 
 def parse_args(args)
 	if args
-		case args.first
+		case args.shift
 		when /dev/
-			switch_to(:development)
+			pull if switch_to(:development)
 		when /pro/
-			switch_to(:production)
+			pull if switch_to(:production)
 		when /feature/
-			if args.length > 1
+			if args.first
+				if switch_to(:development)
+					pull
+					checkout(args.first, "-b")
+				end
+			end
+		when /new/
+			if args.first
 				switch_to(:development)
 				pull
-				checkout(args[1], "-b")
+				checkout(args.first, "-b")
+			end
+		when /update/
+			ENVS.each do |env|
+				switch_to env
+				pull
+			end
+		when /status/
+			if dirty?
+				puts `git status`
+			else
+				puts "\e[0;32mClean Slate\e[m"
 			end
 		else
 			list
